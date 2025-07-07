@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>STEM Blockly IDE</title>
+    <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+    <script src="blocks.js"></script>
+    <script src="generators.js"></script>
+    <script src="micropython.js"></script>
+    <script src="main.js"></script>
+    <script>
+        // Debug: Check if page loaded correctly
+        window.addEventListener('load', function() {
+            console.log('Page loaded successfully');
+            console.log('Toolbar element:', document.getElementById('toolbar'));
+            console.log('BlocklyDiv element:', document.getElementById('blocklyDiv'));
+            
+            // Test if generators are available
+            setTimeout(() => {
+                console.log('Blockly object:', Blockly);
+                console.log('Arduino generators:', Blockly.Arduino);
+                console.log('Python generators:', Blockly.Python);
+                
+                // Test if we can create a simple block
+                if (window.workspace) {
+                    console.log('Workspace is available');
+                    console.log('Workspace blocks:', window.workspace.getAllBlocks().length);
+                }
+            }, 1000);
+        });
+    </script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            overflow-x: hidden;
+        }
+
+        #toolbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1000;
+            min-height: 60px;
+        }
+
+        #toolbar button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        #toolbar button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        #toolbar label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        #toolbar input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 90px);
+            margin-top: 0;
+        }
+
+        #blocklyDiv {
+            flex: 1;
+            min-width: 60%;
+            height: 100%;
+            position: relative;
+        }
+
+        #codePanel {
+            flex: 0 0 40%;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #codeHeader {
+            background: #2d2d30;
+            padding: 10px 15px;
+            border-bottom: 1px solid #3e3e42;
+            font-weight: bold;
+        }
+
+        #codeDisplay {
+            flex: 1;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow: auto;
+            white-space: pre;
+            line-height: 1.4;
+        }
+
+        .code-arduino {
+            color: #4ec9b0;
+        }
+
+        .code-python {
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button onclick="runCode()">▶ Run Code</button>
+        <button onclick="exportCode()">💾 Export</button>
+        <button onclick="clearWorkspace()">🗑️ Clear</button>
+        <button onclick="saveProject()">💾 Save Project</button>
+        <button onclick="loadProject()">📁 Load Project</button>
+        <label>
+            <input type="checkbox" id="languageToggle" onchange="updateCode()">
+            MicroPython Mode
+        </label>
+        <label>
+            Board:
+            <select id="boardSelect" onchange="updateCode()">
+                <option value="arduino">Arduino</option>
+                <option value="esp32">ESP32</option>
+            </select>
+        </label>
+        <button onclick="testCodeGeneration()">🧪 Test Code Gen</button>
+        <button onclick="updateCode()">🔄 Update Code</button>
+        <button onclick="addTestBlock()">➕ Add Test Block</button>
+    </div>
+
+    <div class="container">
+        <div id="blocklyDiv"></div>
+        <div id="codePanel">
+            <div id="codeHeader">Generated Code</div>
+            <div id="codeDisplay">// Drag blocks to generate code</div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for loading projects -->
+    <input type="file" id="fileInput" accept=".json" style="display: none" onchange="handleFileLoad(event)">
+
+    <xml id="toolbox" style="display: none">
+        <category name="Control" colour="60">
+            <block type="start"></block>
+            <block type="wait_ms"></block>
+            <block type="repeat_times"></block>
+            <block type="forever"></block>
+            <block type="wait_until"></block>
+            <block type="controls_if"></block>
+            <block type="controls_ifelse"></block>
+        </category>
+        <category name="Input" colour="120">
+            <block type="read_button"></block>
+            <block type="read_pot"></block>
+            <block type="read_light"></block>
+            <block type="read_sound"></block>
+            <block type="read_touch"></block>
+            <block type="ultrasonic_cm"></block>
+            <block type="dht11_temp"></block>
+            <block type="dht11_hum"></block>
+        </category>
+        <category name="Output" colour="20">
+            <block type="led_onoff"></block>
+            <block type="blink_led"></block>
+            <block type="set_rgb"></block>
+            <block type="play_tone"></block>
+            <block type="beep"></block>
+        </category>
+        <category name="Display" colour="260">
+            <block type="oled_print"></block>
+            <block type="oled_clear"></block>
+            <block type="oled_draw_line"></block>
+            <block type="oled_draw_rect"></block>
+            <block type="oled_draw_circle"></block>
+            <block type="oled_show_var"></block>
+        </category>
+        <category name="LED Matrix" colour="300">
+            <block type="matrix_set_pixel"></block>
+            <block type="matrix_clear"></block>
+            <block type="matrix_scroll_text"></block>
+            <block type="matrix_show_icon"></block>
+        </category>
+        <category name="Actuators" colour="40">
+            <block type="servo_angle"></block>
+            <block type="motor_run"></block>
+            <block type="motor_stop"></block>
+            <block type="relay_onoff"></block>
+        </category>
+        <category name="Math" colour="230">
+            <block type="math_arithmetic"></block>
+            <block type="math_map"></block>
+            <block type="math_random_range"></block>
+        </category>
+        <category name="Variables" colour="330" custom="VARIABLE"></category>
+        <category name="Functions" colour="290" custom="PROCEDURE"></category>
+        <category name="Communication" colour="330">
+            <block type="serial_print"></block>
+            <block type="bluetooth_send"></block>
+            <block type="i2c_write"></block>
+            <block type="spi_write"></block>
+        </category>
+    </xml>
+</body>
+</html>
